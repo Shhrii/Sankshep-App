@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "245940828605",
+    "firebase_url": "https://sankshep-app-a6878-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "sankshep-app-a6878",
+    "storage_bucket": "sankshep-app-a6878.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:245940828605:android:1488fb46952245120cbad4",
+        "android_client_info": {
+          "package_name": "com.sankshep"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "245940828605-fnu4h6inlbnuner8sjcflpsh3v7jva3a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sankshep",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "245940828605-0so1qu6j7lgege7arei9iuhnlsglss10.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQDXiwIPgAMhYyAjvcP0uQwVIrZbZwMyI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "245940828605-0so1qu6j7lgege7arei9iuhnlsglss10.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
