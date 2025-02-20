@@ -170,7 +170,7 @@ const DoctorComponent: React.FC = () => {
         onPress={() => openUrl(post.meta?.Source_Link || '')}
       >
         <Animated.Text style={[styles.actionText, { transform: [{ translateX: trans }] }]}>
-          Open Source
+          Open Sources
         </Animated.Text>
       </TouchableOpacity>
     );
