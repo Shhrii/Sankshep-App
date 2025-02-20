@@ -44,7 +44,7 @@ const SplashScreen: React.FC = ({ navigation }: any) => {
         <View style={styles.overlay} />
       </View>
       {/* Version Label */}
-      <Text style={styles.versionLabel}>Version: 2.0.2</Text>
+      <Text style={styles.versionLabel}>Version: 2.0.3</Text>
       {/* Animated Logo */}
       <Animated.View style={{ opacity: fadeAnim }}>
         <Image

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, Animated, Dimensions, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, Dimensions, Linking, StyleSheet, Image, TouchableWithoutFeedback } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useIsFocused } from '@react-navigation/native';
 import { WebView } from 'react-native-webview';
@@ -18,10 +18,17 @@ interface FetchPostsProps {
 }
 
 const FetchPosts: React.FC<FetchPostsProps> = ({ navigation }) => {
+  const openUrl = (url: string) => {
+    Linking.openURL(url).catch((err) => console.error("Failed to open URL:", err));
+  };
   const [menuVisible, setMenuVisible] = useState<boolean>(false);
+  const [headerVisible, setHeaderVisible] = useState<boolean>(false);
+  
   const slideAnim = useRef(new Animated.Value(-Dimensions.get('window').width)).current;
-  const isFocused = useIsFocused();
+  const headerAnim = useRef(new Animated.Value(-100)).current;
+  const bottomNavAnim = useRef(new Animated.Value(100)).current;
 
+  const isFocused = useIsFocused();
   const webViewRef = useRef<WebView>(null);
 
   const toggleMenu = () => {
@@ -36,56 +43,78 @@ const FetchPosts: React.FC<FetchPostsProps> = ({ navigation }) => {
     webViewRef.current?.reload();
   };
 
+  const handleScreenTap = () => {
+    setHeaderVisible(!headerVisible);
+    Animated.timing(headerAnim, {
+      toValue: headerVisible ? -100 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    Animated.timing(bottomNavAnim, {
+      toValue: headerVisible ? 100 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
   return (
-    <View style={styles.container}>
-      {/* Header with Logo and Menu */}
-      <View style={styles.header}>
-        <Image source={require('../assets/LOGO.png')} style={styles.logo} />
-        <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-          <Image style={styles.menuIcon} source={require('../assets/menu-icon.png')} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Slide-In Menu */}
-      {menuVisible && (
-        <Animated.View style={[styles.menuContainer, { transform: [{ translateX: slideAnim }] }]}>
-          <TouchableOpacity onPress={toggleMenu} style={styles.closeButton}>
-          <Image style={styles.closeIcon} source={require('../assets/close.png')} />
+    <TouchableWithoutFeedback onPress={handleScreenTap}>
+      <View style={styles.container}>
+        {/* Header with Logo and Menu */}
+        <Animated.View style={[styles.header, { transform: [{ translateY: headerAnim }] }]}>
+          <Image source={require('../assets/LOGO.png')} style={styles.logo} />
+          <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
+            <Image style={styles.menuIcon} source={require('../assets/menu-icon.png')} />
           </TouchableOpacity>
-          <Image style={styles.menuInnerlogo} source={require('../assets/menu-logo.png')} />
-          <Text style={styles.menuItem} onPress={toggleMenu}>Research</Text>
-          <Text style={styles.menuItem} onPress={toggleMenu}>Case Studies</Text>
-          <Text style={styles.menuItem} onPress={toggleMenu}>Dosha Imbalance</Text>
-          <Text style={styles.menuItem} onPress={toggleMenu}>Health Focus</Text>
-          <Text style={styles.menuItem} onPress={toggleMenu}>Ayurvedic Recipes</Text>
-          <Text style={styles.menuItem} onPress={() => navigation.navigate('Logout' as never)}>Logout</Text>
         </Animated.View>
-      )}
 
-      {/* WebView to display the poll */}
-      <WebView 
-        ref={webViewRef}
-        source={{ uri: 'https://sankshep.app/poll/' }} 
-        style={styles.webview} 
-      />
+        {/* Slide-In Menu */}
+        {menuVisible && (
+          <Animated.View style={[styles.menuContainer, { transform: [{ translateX: slideAnim }] }]}>
+            <TouchableOpacity onPress={toggleMenu} style={styles.closeButton}>
+              <Image style={styles.closeIcon} source={require('../assets/close.png')} />
+            </TouchableOpacity>
+            <Image style={styles.menuInnerlogo} source={require('../assets/menu-logo.png')} />
+            <Text style={styles.menuItem} onPress={toggleMenu}>Research</Text>
+            <Text style={styles.menuItem} onPress={toggleMenu}>Case Studies</Text>
+            <Text style={styles.menuItem} onPress={toggleMenu}>Dosha Imbalance</Text>
+            <Text style={styles.menuItem} onPress={toggleMenu}>Health Focus</Text>
+            <Text style={styles.menuItem} onPress={toggleMenu}>Ayurvedic Recipes</Text>
+            <Text style={styles.menuItem} onPress={() => navigation.navigate('TermsandConditions' as never)}>
+              Terms & Conditions
+            </Text>
+            <Text style={styles.menuItem} onPress={() => navigation.navigate('PrivacyPolicy' as never)}>
+              Privacy Policy
+            </Text>
+            <Text style={styles.menuItem} onPress={() => navigation.navigate('Logout' as never)}>Logout</Text>
+          </Animated.View>
+        )}
 
-      {/* Refresh Button at the bottom center */}
-      <TouchableOpacity onPress={refreshPage} style={styles.refreshButton}>
-        <Text style={styles.refreshText}>Refresh the Poll</Text>
-      </TouchableOpacity>
+        {/* WebView to display the poll */}
+        <WebView 
+          ref={webViewRef}
+          source={{ uri: 'https://sankshep.app/poll/' }} 
+          style={styles.webview} 
+        />
 
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNavigation}>
-        <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('NonDoctorPage' as never)}>
-        <Image style={styles.Icon} source={require('../assets/news.png')}/>
-          <Text style={styles.navText}>Home</Text>
+        {/* Refresh Button at the bottom center */}
+        <TouchableOpacity onPress={refreshPage} style={styles.refreshButton}>
+          <Text style={styles.refreshText}>Refresh the Poll</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.navButton, isFocused ? styles.activeNavButton : null]} onPress={() => navigation.navigate('Pollx' as never)}>
-          <Image style={styles.Icon} source={require('../assets/polls.png')}/>
-          <Text style={styles.navText}>Polls</Text>
-        </TouchableOpacity>
+
+        {/* Bottom Navigation */}
+        <Animated.View style={[styles.bottomNavigation, { transform: [{ translateY: bottomNavAnim }] }]}>
+          <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('NonDoctorPage' as never)}>
+            <Image style={styles.Icon} source={require('../assets/news.png')}/>
+            <Text style={styles.navText}>News</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.navButton, isFocused ? styles.activeNavButton : null]} onPress={() => navigation.navigate('Pollx' as never)}>
+            <Image style={styles.Icon} source={require('../assets/polls.png')}/>
+            <Text style={styles.navText}>Polls</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 };
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, Image, ActivityIndicator, TouchableOpacity, Share, Animated, TouchableWithoutFeedback, Alert, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Image, ActivityIndicator, TouchableOpacity, Share, Animated, TouchableWithoutFeedback } from 'react-native';
 import SwiperFlatList from 'react-native-swiper-flatlist';
 import he from 'he';
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
@@ -42,7 +42,7 @@ type RootStackParamList = {
 
 type FetchPostsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'FetchPosts'>;
 
-const NonDoctorComponent: React.FC = () => {
+const SwiperComponent: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,30 +74,9 @@ const NonDoctorComponent: React.FC = () => {
 
   useEffect(() => {
     fetchPosts();
-
-    const backAction = () => {
-      if (navigation.isFocused()) {
-        Alert.alert('Hold on!', 'Are you sure you want to exit?', [
-          {
-            text: 'Cancel',
-            onPress: () => null,
-            style: 'cancel',
-          },
-          { text: 'YES', onPress: () => BackHandler.exitApp() },
-        ]);
-        return true;
-      }
-      return false;
-    };
-
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-
-    return () => backHandler.remove();
   }, []);
 
   const decodeHTML = (html: string): string => he.decode(html);
-
-  const stripHTML = (html: string): string => html.replace(/<[^>]*>?/gm, '');
 
   const openUrl = (url: string) => {
     navigation.navigate('WebViewScreen', { url });
@@ -156,7 +135,7 @@ const NonDoctorComponent: React.FC = () => {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#0d6b65" />
-        <Text style={styles.loaderText}>Ayurveda Unfolded, Anytime..</Text>
+        <Text style={styles.loaderText}>Loading...</Text>
       </View>
     );
   }
@@ -216,9 +195,7 @@ const NonDoctorComponent: React.FC = () => {
                     )}
                     <View style={styles.postContent}>
                       <Text style={styles.title}>{decodeHTML(item.title.rendered)}</Text>
-                      <Text style={styles.content}>
-                        {stripHTML(decodeHTML(item.content.rendered)).replace(/\n+/g, ' ').split(' ').slice(0, 70).join(' ') + '...'}
-                      </Text>
+                      <Text style={styles.content}>{decodeHTML(item.excerpt.rendered).replace(/<\/?[^>]+(>|$)/g, "")}</Text>
                       <View style={styles.sharedContainer}>
                         <View style={styles.publishedSection}>
                           <Text style={styles.date}>Published on: {new Date(item.date).toLocaleDateString()}</Text>
@@ -249,11 +226,11 @@ const NonDoctorComponent: React.FC = () => {
           <Animated.View style={[styles.bottomNavigation, { transform: [{ translateY: bottomNavAnim }] }]}>
             <TouchableOpacity
               style={[styles.navButton, styles.activeNavButton]}
-              onPress={() => navigation.navigate('NonDoctorPage' as never)}>
+              onPress={() => navigation.navigate('Home' as never)}>
               <Image style={styles.Icon} source={require('../assets/news.png')} />
               <Text style={styles.navText}>News</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Pollx' as never)}>
+            <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Poll' as never)}>
               <Image style={styles.Icon} source={require('../assets/polls.png')} />
               <Text style={styles.navText}>Poll</Text>
             </TouchableOpacity>
@@ -293,17 +270,16 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   title: {
-    fontSize: 22,
-    fontWeight: 500,
-    lineHeight: 26,
+    fontSize: 20,
+    fontWeight: 'bold',
     color: '#333',
     marginBottom: 5,
   },
   content: {
-    paddingVertical: 10,
-    fontSize: 20,
-    lineHeight: 26,
+    fontSize: 16,
+    lineHeight: 22,
     color: '#444',
+    marginBottom: 10,
   },
   sharedContainer: {
     flexDirection: 'row',
@@ -325,19 +301,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   shareSection: {
-    marginHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
   },
   shareButton: {
-    marginTop: -15,
     padding: 10,
-    borderRadius: 50,
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+    borderRadius: 5,
   },
   shareIcon: {
-    width: 25,
-    height: 25,
+    width: 30,
+    height: 30,
     objectFit: 'contain',
   },
   loaderContainer: {
@@ -419,7 +392,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0d6b65',
     justifyContent: 'center',
     alignItems: 'center',
-    width: 1,
+    width: 100,
     height: '100%',
   },
   actionText: {
@@ -465,4 +438,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default NonDoctorComponent;
+export default SwiperComponent;

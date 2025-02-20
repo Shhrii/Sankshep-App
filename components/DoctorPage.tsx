@@ -1,21 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  Image,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-  Dimensions,
-  RefreshControl,
-  ActivityIndicator,
-  SafeAreaView,
-  Alert,
-} from 'react-native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { useIsFocused } from '@react-navigation/native';
+import { View, Text, StyleSheet, Dimensions, Image, ActivityIndicator, TouchableOpacity, Share, Animated, TouchableWithoutFeedback,Alert, BackHandler } from 'react-native';
+import SwiperFlatList from 'react-native-swiper-flatlist';
 import he from 'he';
+import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
+import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StackNavigationProp } from '@react-navigation/stack';
+
+const { width, height } = Dimensions.get('window');
 
 interface Post {
   id: number;
@@ -50,23 +42,22 @@ type RootStackParamList = {
 
 type FetchPostsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'FetchPosts'>;
 
-interface FetchPostsProps {
-  navigation: FetchPostsScreenNavigationProp;
-}
-
-const shuffleArray = (array: Post[]): Post[] => array.sort(() => Math.random() - 0.5);
-
-const FetchPosts: React.FC<FetchPostsProps> = ({ navigation }) => {
+const DoctorComponent: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [menuVisible, setMenuVisible] = useState<boolean>(false);
+  const [headerVisible, setHeaderVisible] = useState<boolean>(true);
+  const navigation = useNavigation<FetchPostsScreenNavigationProp>();
 
-  const slideAnim = useRef(new Animated.Value(-Dimensions.get('window').width)).current;
+  const slideAnim = useRef(new Animated.Value(-width)).current;
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const bottomNavAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const isFocused = useIsFocused();
+  const shuffleArray = (array: Post[]): Post[] => {
+    return array.sort(() => Math.random() - 0.5);
+  };
 
   const fetchPosts = async () => {
     try {
@@ -107,135 +98,282 @@ const FetchPosts: React.FC<FetchPostsProps> = ({ navigation }) => {
 
   useEffect(() => {
     fetchPosts();
+
+    const backAction = () => {
+      if (navigation.isFocused()) {
+        Alert.alert('Hold on!', 'Are you sure you want to exit?', [
+          {
+            text: 'Cancel',
+            onPress: () => null,
+            style: 'cancel',
+          },
+          { text: 'YES', onPress: () => BackHandler.exitApp() },
+        ]);
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+
+    return () => backHandler.remove();
   }, []);
 
   const decodeHTML = (html: string): string => he.decode(html);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchPosts();
-    setRefreshing(false);
+  const stripHTML = (html: string): string => html.replace(/<[^>]*>?/gm, '');
+
+  const openUrl = (url: string) => {
+    navigation.navigate('WebViewScreen', { url });
+  };
+
+  const handleShare = async (post: Post) => {
+    try {
+      await Share.share({
+        message: `${decodeHTML(post.title.rendered)}\n\nRead more: ${post.meta?.Source_Link || 'https://sankshep.app'}`,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
   };
 
   const toggleMenu = () => {
     Animated.timing(slideAnim, {
-      toValue: menuVisible ? -Dimensions.get('window').width : 0,
+      toValue: menuVisible ? -width : 0,
       duration: 300,
       useNativeDriver: true,
     }).start(() => setMenuVisible(!menuVisible));
   };
 
-  const handleSourceClick = (url: string) => {
-    try {
-      new URL(url); // Validate URL
-      navigation.navigate('WebViewScreen', { url });
-    } catch (err) {
-      Alert.alert('Invalid URL');
-    }
+  const toggleHeaderAndNav = () => {
+    Animated.timing(headerAnim, {
+      toValue: headerVisible ? -100 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    Animated.timing(bottomNavAnim, {
+      toValue: headerVisible ? 100 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setHeaderVisible(!headerVisible));
+  };
+
+  const renderRightActions = (progress: any, dragX: any, post: Post) => {
+    const trans = dragX.interpolate({
+      inputRange: [0, 50, 100, 101],
+      outputRange: [0, 0, 0, 1],
+    });
+
+    return (
+      <TouchableOpacity
+        style={styles.rightAction}
+        onPress={() => openUrl(post.meta?.Source_Link || '')}
+      >
+        <Animated.Text style={[styles.actionText, { transform: [{ translateX: trans }] }]}>
+          Open Source
+        </Animated.Text>
+      </TouchableOpacity>
+    );
   };
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.loaderContainer}>
+      <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#0d6b65" />
-        <Text style={styles.loaderText}>Your Gateway to Ayurvedic Insights...</Text>
-      </SafeAreaView>
+        <Text style={styles.loaderText}>Your Gateway to Ayurveda...</Text>
+      </View>
     );
   }
 
   if (error) {
-    return (
-      <SafeAreaView style={styles.errorContainer}>
-        <Text style={styles.errorText}>Error: {error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchPosts}>
-          <Text style={styles.retryText}>Retry</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
+    return <Text>Error: {error}</Text>;
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Image source={require('../assets/LOGO.png')} style={styles.logo} />
-        <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
-          <Image style={styles.menuIcon} source={require('../assets/menu-icon.png')} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Menu */}
-      {menuVisible && (
-        <Animated.View style={[styles.menuContainer, { transform: [{ translateX: slideAnim }] }]}>
-          <TouchableOpacity onPress={toggleMenu} style={styles.closeButton}>
-            {/* <Text style={styles.closeText}>X</Text> */}
-            <Image style={styles.closeIcon} source={require('../assets/close.png')} />
-          </TouchableOpacity>
-          <Image style={styles.menuInnerlogo} source={require('../assets/menu-logo.png')} />
-          <Text style={styles.menuItem} onPress={toggleMenu}>Research</Text>
-          <Text style={styles.menuItem} onPress={toggleMenu}>Case Studies</Text>
-          <Text style={styles.menuItem} onPress={toggleMenu}>Dosha Imbalance</Text>
-          <Text style={styles.menuItem} onPress={toggleMenu}>Health Focus</Text>
-          <Text style={styles.menuItem} onPress={toggleMenu}>Ayurvedic Recipes</Text>
-          <Text style={styles.menuItem} onPress={() => navigation.navigate('Logout' as never)}>Logout</Text>
-        </Animated.View>
-      )}
-
-      {/* Posts */}
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        {posts.map(post => (
-          <Animated.View key={post.id} style={[styles.postContainer, { opacity: fadeAnim }]}>
-            {post._embedded?.['wp:featuredmedia']?.[0]?.media_details?.sizes?.medium?.source_url ? (
-              <Image
-                style={styles.image}
-                source={{ uri: post._embedded['wp:featuredmedia'][0].media_details.sizes.medium.source_url }}
-              />
-            ) : (
-              <Text style={styles.noImageText}>No image available</Text>
-            )}
-            <View style={styles.postContent}>
-              <Text style={styles.title}>{decodeHTML(post.title.rendered)}</Text>
-              <Text style={styles.content}>{decodeHTML(post.excerpt.rendered.replace(/<[^>]+>/g, ''))}</Text>
-              <Text style={styles.date}>Published on: {new Date(post.date).toLocaleDateString()}</Text>
-              {post.meta?.Source_Tag && post.meta?.Source_Link ? (
-                <Text style={styles.sourceLink} onPress={() => handleSourceClick(post.meta.Source_Link || '')}>
-                  Source: {post.meta.Source_Tag}
-                </Text>
-              ) : (
-                <Text style={styles.sourceLink}></Text>//Source: Unknown
-              )}
-            </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <TouchableWithoutFeedback onPress={toggleHeaderAndNav}>
+        <SafeAreaView style={styles.container}>
+          <Animated.View style={[styles.header, { transform: [{ translateY: headerAnim }] }]}>
+            <Image source={require('../assets/LOGO.png')} style={styles.logo} />
+            <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
+              <Image style={styles.menuIcon} source={require('../assets/menu-icon.png')} />
+            </TouchableOpacity>
           </Animated.View>
-        ))}
-      </ScrollView>
-      <View style={styles.bottomNavigation}>
-        <TouchableOpacity
-          style={[styles.navButton, isFocused ? styles.activeNavButton : null]}
-          onPress={() => navigation.navigate('Doctorpage' as never)}>
-          <Image style={styles.Icon} source={require('../assets/news.png')}/>
-          <Text style={styles.navText}>News</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Poll')}>
-        <Image style={styles.Icon} source={require('../assets/polls.png')}/>
-          <Text style={styles.navText}>Poll</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+
+          {menuVisible && (
+            <Animated.View style={[styles.menuContainer, { transform: [{ translateX: slideAnim }] }]}>
+              <TouchableOpacity onPress={toggleMenu} style={styles.closeButton}>
+                <Image style={styles.closeIcon} source={require('../assets/close.png')} />
+              </TouchableOpacity>
+              <Image style={styles.menuInnerlogo} source={require('../assets/menu-logo.png')} />
+              <Text style={styles.menuItem} onPress={toggleMenu}>Research</Text>
+              <Text style={styles.menuItem} onPress={toggleMenu}>Case Studies</Text>
+              <Text style={styles.menuItem} onPress={toggleMenu}>Dosha Imbalance</Text>
+              <Text style={styles.menuItem} onPress={toggleMenu}>Health Focus</Text>
+              <Text style={styles.menuItem} onPress={toggleMenu}>Ayurvedic Recipes</Text>
+              <Text style={styles.menuItem} onPress={() => navigation.navigate('TermsandConditions' as never)}>
+                Terms & Conditions
+              </Text>
+              <Text style={styles.menuItem} onPress={() => navigation.navigate('PrivacyPolicy' as never)}>
+                Privacy Policy
+              </Text>
+              <Text style={styles.menuItem} onPress={() => navigation.navigate('Logout' as never)}>Logout</Text>
+            </Animated.View>
+          )}
+          
+          <SwiperFlatList
+            data={posts}
+            renderItem={({ item }) => (
+              <Swipeable
+                renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item)}
+                onSwipeableRightOpen={() => openUrl(item.meta?.Source_Link || '')}
+              >
+                <TouchableWithoutFeedback onPress={toggleHeaderAndNav}>
+                  <View style={styles.card}>
+                    {item._embedded?.['wp:featuredmedia']?.[0]?.media_details?.sizes?.medium?.source_url ? (
+                      <Image
+                        style={styles.image}
+                        source={{ uri: item._embedded['wp:featuredmedia'][0].media_details.sizes.medium.source_url }}
+                      />
+                    ) : (
+                      <Text style={styles.noImageText}>No image available</Text>
+                    )}
+                    <View style={styles.postContent}>
+                      <Text style={styles.title}>{decodeHTML(item.title.rendered)}</Text>
+                      <Text style={styles.content}>
+                        {stripHTML(decodeHTML(item.content.rendered)).replace(/\n+/g, ' ').split(' ').slice(0, 60).join(' ') + '...'}
+                      </Text>
+                      <View style={styles.sharedContainer}>
+                        <View style={styles.publishedSection}>
+                          <Text style={styles.date}>Published on: {new Date(item.date).toLocaleDateString()}</Text>
+                          {item.meta?.Source_Tag && item.meta?.Source_Link ? (
+                            <Text style={styles.sourceLink} onPress={() => openUrl(item.meta.Source_Link || '')}>
+                              Source: {item.meta.Source_Tag}
+                            </Text>
+                          ) : (
+                            <Text style={styles.sourceLink}>Source: Unknown</Text>
+                          )}
+                        </View>
+                        <View style={styles.shareSection}>
+                          <TouchableOpacity onPress={() => handleShare(item)} style={styles.shareButton}>
+                            <Image style={styles.shareIcon} source={require('../assets/share-icon.png')} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableWithoutFeedback>
+              </Swipeable>
+            )}
+            keyExtractor={(item) => item.id.toString()}
+            vertical
+            showPagination={false}
+          />
+
+          <Animated.View style={[styles.bottomNavigation, { transform: [{ translateY: bottomNavAnim }] }]}>
+            <TouchableOpacity
+              style={[styles.navButton, styles.activeNavButton]}
+              onPress={() => navigation.navigate('Home' as never)}>
+              <Image style={styles.Icon} source={require('../assets/news.png')} />
+              <Text style={styles.navText}>News</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Poll' as never)}>
+              <Image style={styles.Icon} source={require('../assets/polls.png')} />
+              <Text style={styles.navText}>Poll</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
+    </GestureHandlerRootView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F5FCFF',
   },
-  Icon:{
-    width:35,
-    height:20,
-    color:'#fff',
-    objectFit:'contain',
+  card: {
+    width: width,
+    height: height,
+    backgroundColor: '#FFFFFF',
+    padding: 0,
+  },
+  image: {
+    width: '100%',
+    height: height * 0.3,
+    borderRadius: 0,
+    marginBottom: 10,
+  },
+  noImageText: {
+    fontSize: 14,
+    color: '#bbb',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  postContent: {
+    flex: 1,
+    padding: 10,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 500,
+    lineHeight: 26,
+    color: '#333',
+    marginBottom: 5,
+  },
+  content: {
+    paddingVertical: 10,
+    fontSize: 20,
+    lineHeight: 26,
+    color: '#444',
+  },
+  sharedContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  publishedSection: {
+    flex: 1,
+  },
+  date: {
+    fontSize: 14,
+    color: '#0d6b65',
+    marginBottom: 5,
+  },
+  sourceLink: {
+    fontSize: 14,
+    color: '#3366CC',
+    marginBottom: 10,
+  },
+  shareSection: {
+    marginHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  shareButton: {
+    marginTop: -15,
+    padding: 10,
+    borderRadius: 50,
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+  },
+  shareIcon: {
+    width: 25,
+    height: 25,
+    objectFit: 'contain',
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f9f9f9',
+  },
+  loaderText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#444',
   },
   header: {
     position: 'absolute',
@@ -256,8 +394,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   logo: {
-    width: 150,
-    height: 50,
+    width: '40%',
+    height: undefined,
+    aspectRatio: 3,
     resizeMode: 'contain',
   },
   menuButton: {
@@ -283,20 +422,16 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     padding: 5,
   },
-  closeText: {
-    fontSize: 24,
-    color: '#f2782c',
-  },
-  closeIcon:{
-    width:30,
-    height:30,
-    objectFit:'contain',
+  closeIcon: {
+    width: 30,
+    height: 30,
+    objectFit: 'contain',
   },
   menuItem: {
     paddingVertical: 15,
     color: '#000',
     fontSize: 16,
-    fontWeight:'600',
+    fontWeight: '600',
   },
   menuInnerlogo: {
     width: 60,
@@ -304,62 +439,17 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     marginTop: -50,
   },
-  scrollContent: {
-    paddingTop: 70,
-    paddingBottom: 50,
-    paddingHorizontal: 10,
-    backgroundColor: '#f9f9f9',
+  rightAction: {
+    backgroundColor: '#0d6b65',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 1,
+    height: '100%',
   },
-  postContainer: {
-    marginBottom: 20,
-    marginTop: 20,
-    borderRadius: 0,
-    overflow: 'hidden',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    padding: 0,
-  },
-  title: {
-    fontSize: 20,
+  actionText: {
+    color: '#fff',
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  date: {
-    fontSize: 14,
-    color: '#0d6b65',
-    marginBottom: 5,
-  },
-  sourceLink: {
-    fontSize: 14,
-    color: '#3366CC',
-    marginBottom: 10,
-  },
-  image: {
-    width: '100%',
-    height: 200,
-    borderRadius: 0,
-    marginBottom: 10,
-  },
-  noImageText: {
-    fontSize: 14,
-    color: '#bbb',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  content: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: '#444',
-  },
-  postContent:{
-    padding:10,
+    padding: 20,
   },
   bottomNavigation: {
     position: 'absolute',
@@ -371,35 +461,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingVertical: 10,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   navButton: {
     alignItems: 'center',
+    padding: 5,
   },
   navText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+    marginTop: 5,
   },
   activeNavButton: {
     borderColor: '#fff',
-    padding: 5,
-    borderBottomWidth:2,
+    borderBottomWidth: 2,
   },
-  activeNavText: {
-    color: '#ffcc00',
+  Icon: {
+    width: 35,
+    height: 20,
+    color: '#fff',
+    objectFit: 'contain',
   },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f9f9f9',
-  },
-  loaderText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#444',
-  },
-  errorContainer:{},errorText:{},retryButton:{},retryText:{}
 });
 
-export default FetchPosts;
+export default DoctorComponent;

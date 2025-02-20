@@ -12,7 +12,10 @@ import Pollx from './components/Pollx';
 import WebViewScreen from './components/WebViewScreen';
 import AuthLoadingScreen from './components/AuthLoadingScreen';
 import SignInWithGoogle from './components/SignInWithGoogle';
+import TermsandConditions from './components/TermsandConditions';
+import PrivacyPolicy from './components/PrivacyPolicy';
 import Logout from './components/Logout';
+import Swiper from './components/swiper';
 
 const Stack = createStackNavigator();
 
@@ -30,7 +33,10 @@ const App = () => {
         <Stack.Screen name="Pollx" component={Pollx} options={{ headerShown: false }} />  
         <Stack.Screen name="WebViewScreen" component={WebViewScreen} options={{ headerShown: false }} />  
         <Stack.Screen name="SignInWithGoogle" component={SignInWithGoogle} options={{ headerShown: false }} />  
+        <Stack.Screen name="TermsandConditions" component={TermsandConditions} options={{ headerShown: false }} />
+        <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} options={{ headerShown: false }} />
         <Stack.Screen name="Logout" component={Logout} options={{ headerShown: false }} />
+        <Stack.Screen name="Swiper" component={Swiper} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
